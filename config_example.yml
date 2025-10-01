@@ -1,0 +1,93 @@
+# Example Configuration for Multivariate Visualization
+# Copy this file and modify it for your own data
+
+# Data source configuration
+data:
+  # Path to your data file
+  file: "path/to/your/data.csv"
+  
+  # Or use built-in datasets
+  builtin: "iris"  # Options: iris, mtcars, economics
+  
+  # Column specifications
+  numeric_columns:
+    - "Sepal.Length"
+    - "Sepal.Width"
+    - "Petal.Length"
+    - "Petal.Width"
+  
+  categorical_column: "Species"
+  
+  # Date/time column (optional)
+  date_column: null
+
+# Visualization preferences
+visualization:
+  # Which visualizations to generate
+  enabled:
+    - scatter_matrix
+    - correlation_heatmap
+    - parallel_coordinates
+    - pca
+    - boxplots
+    - time_series  # Only if date_column is specified
+  
+  # Color scheme
+  colors:
+    scheme: "Set1"  # Options: Set1, Set2, Set3, Paired, Dark2, etc.
+    
+  # Figure dimensions
+  figure:
+    width: 10
+    height: 8
+  
+  # Theme
+  theme: "minimal"  # Options: minimal, classic, bw, gray
+
+# Output configuration
+output:
+  # Output formats
+  formats:
+    - html
+    - pdf  # Requires LaTeX
+  
+  # Output directory
+  directory: "output"
+  
+  # File naming
+  prefix: "analysis"
+  
+  # Include timestamp in filename
+  timestamp: true
+
+# Advanced options
+advanced:
+  # Correlation method
+  correlation_method: "pearson"  # Options: pearson, spearman, kendall
+  
+  # PCA settings
+  pca:
+    scale: true
+    center: true
+    n_components: 2
+  
+  # Outlier handling
+  outliers:
+    detect: true
+    method: "IQR"  # Options: IQR, z-score
+    threshold: 1.5  # For IQR method
+  
+  # Missing data handling
+  missing_data:
+    method: "omit"  # Options: omit, mean, median, forward_fill
+  
+  # Performance
+  sampling:
+    enabled: false
+    max_rows: 10000
+
+# Notes:
+# - This is a YAML-like configuration format (for documentation purposes)
+# - To use this in R, you can read it with the 'yaml' package
+# - Example: config <- yaml::read_yaml("config.yml")
+# - Then access values: config$data$file
