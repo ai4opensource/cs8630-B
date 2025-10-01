@@ -1,0 +1,470 @@
+---
+title: "Multivariate Data Visualization Examples with Tufte"
+author: "CS8630-B Visualization Examples"
+date: "`r Sys.Date()`"
+output:
+  tufte::tufte_html: default
+  tufte::tufte_handout:
+    citation_package: natbib
+    latex_engine: xelatex
+  tufte::tufte_book:
+    citation_package: natbib
+    latex_engine: xelatex
+---
+
+```{r setup, include=FALSE}
+library(tufte)
+# invalidate cache when the tufte version changes
+knitr::opts_chunk$set(
+  tidy = FALSE,
+  cache.extra = packageVersion('tufte'),
+  message = FALSE,
+  warning = FALSE,
+  fig.width = 8,
+  fig.height = 6
+)
+options(htmltools.dir.version = FALSE)
+
+# Install and load required packages
+required_packages <- c("ggplot2", "GGally", "corrplot", "reshape2", 
+                      "plotly", "MASS", "gridExtra", "dplyr", "tidyr")
+
+for(pkg in required_packages) {
+  if(!require(pkg, character.only = TRUE, quietly = TRUE)) {
+    install.packages(pkg, quiet = TRUE)
+    library(pkg, character.only = TRUE)
+  }
+}
+```
+
+# Introduction
+
+`r newthought('Multivariate data visualization')` is essential for understanding complex relationships between multiple variables simultaneously. This document demonstrates various approaches to visualizing multivariate data using R, following the principles of clear and effective data presentation^[Tufte, Edward R. (2001). The Visual Display of Quantitative Information. Graphics Press.].
+
+# Scatter Plot Matrices
+
+`r margin_note("Scatter plot matrices show pairwise relationships between all variables in a dataset.")`
+
+Scatter plot matrices are one of the most fundamental tools for exploring multivariate data. Let's use the classic `iris` dataset^[Fisher, R. A. (1936). The use of multiple measurements in taxonomic problems. Annals of Eugenics, 7(2), 179-188.]:
+
+```{r iris-pairs, fig.margin=FALSE, fig.cap="Pairwise scatter plots of the iris dataset showing relationships between sepal and petal measurements."}
+# Using base R pairs plot
+pairs(iris[,1:4], 
+      col = iris$Species,
+      pch = 19,
+      main = "Iris Dataset: Scatter Plot Matrix")
+legend("topright", 
+       legend = levels(iris$Species),
+       col = 1:3,
+       pch = 19,
+       bty = "n")
+```
+
+## Enhanced Scatter Plot Matrix with GGally
+
+`r newthought('The GGally package')` provides enhanced scatter plot matrices with distribution plots and correlation coefficients:
+
+```{r ggpairs, fig.margin=FALSE, fig.width=10, fig.height=8, fig.cap="Enhanced scatter plot matrix with density plots and correlations."}
+ggpairs(iris, 
+        columns = 1:4,
+        aes(color = Species, alpha = 0.5),
+        title = "Iris Dataset: Enhanced Pair Plot")
+```
+
+# Correlation Heatmaps
+
+`r margin_note("Heatmaps use color intensity to represent correlation strength between variables.")`
+
+Correlation matrices visualized as heatmaps provide quick insights into variable relationships:
+
+```{r correlation-heatmap, fig.cap="Correlation heatmap of numeric variables in the mtcars dataset."}
+# Using mtcars dataset
+cor_matrix <- cor(mtcars)
+corrplot(cor_matrix, 
+         method = "color",
+         type = "upper",
+         order = "hclust",
+         addCoef.col = "black",
+         tl.col = "black",
+         tl.srt = 45,
+         number.cex = 0.7)
+```
+
+## Correlation with Significance
+
+```{r correlation-with-sig, fig.cap="Correlation plot with statistical significance indicators."}
+# Create correlation matrix with p-values
+cor.mtest <- function(mat, ...) {
+    mat <- as.matrix(mat)
+    n <- ncol(mat)
+    p.mat <- matrix(NA, n, n)
+    diag(p.mat) <- 0
+    for (i in 1:(n - 1)) {
+        for (j in (i + 1):n) {
+            tmp <- cor.test(mat[, i], mat[, j], ...)
+            p.mat[i, j] <- p.mat[j, i] <- tmp$p.value
+        }
+    }
+    colnames(p.mat) <- rownames(p.mat) <- colnames(mat)
+    p.mat
+}
+
+p.mat <- cor.mtest(mtcars)
+corrplot(cor_matrix, 
+         method = "circle",
+         type = "upper",
+         p.mat = p.mat,
+         sig.level = 0.05,
+         insig = "blank",
+         tl.col = "black")
+```
+
+# Parallel Coordinates Plot
+
+`r newthought('Parallel coordinates')` are excellent for visualizing multivariate data where each variable is represented as a vertical axis^[Inselberg, Alfred (1985). The plane with parallel coordinates. The Visual Computer, 1(2), 69-91.].
+
+```{r parallel-coords, fig.margin=FALSE, fig.width=10, fig.cap="Parallel coordinates plot showing all iris measurements."}
+# Prepare data for parallel coordinates
+iris_scaled <- iris
+iris_scaled[,1:4] <- scale(iris[,1:4])
+
+# Create parallel coordinates plot
+library(MASS)
+parcoord(iris[,1:4], 
+         col = as.numeric(iris$Species),
+         var.label = TRUE,
+         main = "Parallel Coordinates Plot: Iris Dataset")
+legend("topright", 
+       legend = levels(iris$Species),
+       col = 1:3,
+       lty = 1,
+       bty = "n")
+```
+
+## Interactive Parallel Coordinates with Plotly
+
+`r margin_note("Interactive plots allow users to explore data dynamically.")`
+
+```{r parallel-plotly, fig.margin=FALSE, fig.cap="Interactive parallel coordinates plot."}
+library(plotly)
+plot_ly(type = 'parcoords',
+        line = list(color = as.numeric(iris$Species),
+                   colorscale = 'Jet',
+                   showscale = TRUE),
+        dimensions = list(
+          list(range = c(4,8),
+               label = 'Sepal Length', 
+               values = iris$Sepal.Length),
+          list(range = c(2,4.5),
+               label = 'Sepal Width', 
+               values = iris$Sepal.Width),
+          list(range = c(1,7),
+               label = 'Petal Length', 
+               values = iris$Petal.Length),
+          list(range = c(0,3),
+               label = 'Petal Width', 
+               values = iris$Petal.Width)
+        ))
+```
+
+# Bubble Charts for Three Variables
+
+`r newthought('Bubble charts')` extend scatter plots by encoding a third variable with point size:
+
+```{r bubble-chart, fig.cap="Bubble chart showing horsepower vs. miles per gallon with cylinder count as size."}
+ggplot(mtcars, aes(x = hp, y = mpg, size = cyl, color = factor(cyl))) +
+  geom_point(alpha = 0.6) +
+  scale_size_continuous(range = c(3, 15)) +
+  labs(title = "Horsepower vs. MPG",
+       subtitle = "Bubble size represents number of cylinders",
+       x = "Horsepower",
+       y = "Miles per Gallon",
+       size = "Cylinders",
+       color = "Cylinders") +
+  theme_minimal() +
+  theme(legend.position = "right")
+```
+
+# Time Series Multivariate Data
+
+`r margin_note("Time series with multiple variables often reveal temporal patterns and relationships.")`
+
+```{r time-series, fig.margin=FALSE, fig.cap="Multiple time series showing economic indicators over time."}
+# Using built-in economics dataset
+economics_long <- economics %>%
+  select(date, pce, pop, psavert, unemploy) %>%
+  pivot_longer(cols = -date, names_to = "variable", values_to = "value")
+
+ggplot(economics_long, aes(x = date, y = value, color = variable)) +
+  geom_line(size = 0.8) +
+  facet_wrap(~ variable, scales = "free_y", ncol = 1) +
+  labs(title = "US Economic Indicators Over Time",
+       x = "Year",
+       y = "Value") +
+  theme_minimal() +
+  theme(legend.position = "none")
+```
+
+## Multivariate Time Series on Same Scale
+
+```{r time-series-normalized, fig.cap="Normalized time series for comparison across different scales."}
+# Normalize to 0-1 scale for comparison
+economics_normalized <- economics %>%
+  select(date, pce, pop, psavert, unemploy) %>%
+  mutate(across(-date, ~(.-min(.))/(max(.)-min(.)))) %>%
+  pivot_longer(cols = -date, names_to = "variable", values_to = "value")
+
+ggplot(economics_normalized, aes(x = date, y = value, color = variable)) +
+  geom_line(size = 0.8, alpha = 0.7) +
+  labs(title = "Normalized US Economic Indicators",
+       subtitle = "Scaled to 0-1 for comparison",
+       x = "Year",
+       y = "Normalized Value",
+       color = "Indicator") +
+  theme_minimal()
+```
+
+# Heatmaps for Large Datasets
+
+`r newthought('Heatmaps')` are particularly effective for visualizing large matrices:
+
+```{r heatmap, fig.margin=FALSE, fig.width=10, fig.height=8, fig.cap="Heatmap showing values across two categorical dimensions."}
+# Create sample data
+set.seed(123)
+heatmap_data <- matrix(rnorm(100), nrow = 10)
+rownames(heatmap_data) <- paste("Row", 1:10)
+colnames(heatmap_data) <- paste("Col", 1:10)
+
+# Create heatmap
+heatmap(heatmap_data,
+        col = colorRampPalette(c("blue", "white", "red"))(100),
+        scale = "none",
+        main = "Heatmap of Random Data",
+        xlab = "Columns",
+        ylab = "Rows")
+```
+
+## ggplot2 Heatmap
+
+```{r ggplot-heatmap, fig.cap="ggplot2 heatmap with custom color scheme."}
+# Reshape data for ggplot2
+heatmap_df <- melt(heatmap_data)
+colnames(heatmap_df) <- c("Row", "Column", "Value")
+
+ggplot(heatmap_df, aes(x = Column, y = Row, fill = Value)) +
+  geom_tile() +
+  scale_fill_gradient2(low = "blue", mid = "white", high = "red", 
+                      midpoint = 0) +
+  labs(title = "Heatmap with ggplot2",
+       fill = "Value") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+# Principal Component Analysis (PCA)
+
+`r margin_note("PCA reduces dimensionality while preserving variance in the data.")`
+
+`r newthought('Dimensionality reduction')` techniques like PCA help visualize high-dimensional data:
+
+```{r pca, fig.cap="PCA biplot showing first two principal components of iris data."}
+# Perform PCA
+iris_pca <- prcomp(iris[,1:4], scale. = TRUE)
+
+# Create biplot data
+pca_data <- data.frame(
+  PC1 = iris_pca$x[,1],
+  PC2 = iris_pca$x[,2],
+  Species = iris$Species
+)
+
+# Calculate variance explained
+var_explained <- round(100 * iris_pca$sdev^2 / sum(iris_pca$sdev^2), 1)
+
+ggplot(pca_data, aes(x = PC1, y = PC2, color = Species)) +
+  geom_point(size = 3, alpha = 0.7) +
+  labs(title = "PCA of Iris Dataset",
+       x = paste0("PC1 (", var_explained[1], "% variance)"),
+       y = paste0("PC2 (", var_explained[2], "% variance)")) +
+  theme_minimal() +
+  theme(legend.position = "right")
+```
+
+## PCA Loadings Plot
+
+```{r pca-loadings, fig.cap="PCA loadings showing variable contributions to principal components."}
+# Extract loadings
+loadings <- iris_pca$rotation[,1:2]
+loadings_df <- data.frame(
+  Variable = rownames(loadings),
+  PC1 = loadings[,1],
+  PC2 = loadings[,2]
+)
+
+ggplot(loadings_df, aes(x = PC1, y = PC2)) +
+  geom_segment(aes(x = 0, y = 0, xend = PC1, yend = PC2),
+               arrow = arrow(length = unit(0.3, "cm")),
+               size = 1, color = "red") +
+  geom_text(aes(label = Variable), 
+            hjust = -0.1, vjust = -0.1, size = 4) +
+  labs(title = "PCA Loadings Plot",
+       x = paste0("PC1 (", var_explained[1], "%)"),
+       y = paste0("PC2 (", var_explained[2], "%)")) +
+  theme_minimal() +
+  coord_fixed()
+```
+
+# 3D Scatter Plots
+
+`r newthought('Three-dimensional scatter plots')` allow visualization of three continuous variables simultaneously:
+
+```{r 3d-scatter, fig.margin=FALSE, fig.cap="Interactive 3D scatter plot of iris measurements."}
+plot_ly(iris, 
+        x = ~Sepal.Length, 
+        y = ~Sepal.Width, 
+        z = ~Petal.Length,
+        color = ~Species,
+        type = "scatter3d",
+        mode = "markers",
+        marker = list(size = 5)) %>%
+  layout(title = "3D Scatter Plot: Iris Dataset",
+         scene = list(
+           xaxis = list(title = "Sepal Length"),
+           yaxis = list(title = "Sepal Width"),
+           zaxis = list(title = "Petal Length")
+         ))
+```
+
+# Faceted Visualizations
+
+`r margin_note("Faceting creates small multiples for comparing subgroups.")`
+
+Faceting allows us to create small multiples for different subgroups:
+
+```{r faceted, fig.margin=FALSE, fig.width=10, fig.height=6, fig.cap="Faceted scatter plots by species."}
+ggplot(iris, aes(x = Sepal.Length, y = Petal.Length, color = Species)) +
+  geom_point(size = 3, alpha = 0.7) +
+  geom_smooth(method = "lm", se = TRUE, alpha = 0.2) +
+  facet_wrap(~ Species, ncol = 3) +
+  labs(title = "Sepal Length vs. Petal Length by Species",
+       x = "Sepal Length (cm)",
+       y = "Petal Length (cm)") +
+  theme_minimal() +
+  theme(legend.position = "none")
+```
+
+# Box Plots for Multiple Groups
+
+```{r boxplots, fig.cap="Box plots comparing distributions across multiple variables."}
+# Reshape iris data for box plots
+iris_long <- iris %>%
+  pivot_longer(cols = -Species, names_to = "Measurement", values_to = "Value")
+
+ggplot(iris_long, aes(x = Measurement, y = Value, fill = Species)) +
+  geom_boxplot(alpha = 0.7) +
+  labs(title = "Distribution of Measurements by Species",
+       x = "Measurement Type",
+       y = "Value (cm)") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+# Violin Plots with Points
+
+`r newthought('Violin plots')` combine box plots with density plots:
+
+```{r violin, fig.margin=FALSE, fig.cap="Violin plots showing distribution shapes with individual points."}
+ggplot(iris_long, aes(x = Species, y = Value, fill = Species)) +
+  geom_violin(alpha = 0.7, trim = FALSE) +
+  geom_boxplot(width = 0.1, alpha = 0.5, outlier.shape = NA) +
+  geom_jitter(width = 0.05, alpha = 0.3, size = 0.5) +
+  facet_wrap(~ Measurement, scales = "free_y") +
+  labs(title = "Distribution of Measurements by Species",
+       x = "Species",
+       y = "Value (cm)") +
+  theme_minimal() +
+  theme(legend.position = "none")
+```
+
+# Cleveland Dot Plot
+
+`r margin_note("Cleveland dot plots are effective for comparing values across categories.")`
+
+```{r cleveland, fig.cap="Cleveland dot plot comparing average values across groups."}
+# Calculate means by species
+iris_means <- iris %>%
+  group_by(Species) %>%
+  summarise(across(where(is.numeric), mean)) %>%
+  pivot_longer(cols = -Species, names_to = "Measurement", values_to = "Mean")
+
+ggplot(iris_means, aes(x = Mean, y = Measurement, color = Species)) +
+  geom_point(size = 4) +
+  geom_line(aes(group = Measurement), color = "gray70", size = 0.5) +
+  labs(title = "Average Measurements by Species",
+       x = "Mean Value (cm)",
+       y = "Measurement Type") +
+  theme_minimal() +
+  theme(legend.position = "right")
+```
+
+# Multivariate Density Plots
+
+```{r density-2d, fig.cap="2D density plot showing concentration of observations."}
+ggplot(iris, aes(x = Sepal.Length, y = Petal.Length)) +
+  geom_density_2d_filled(alpha = 0.7) +
+  geom_point(aes(color = Species), size = 2) +
+  labs(title = "2D Density Plot: Sepal Length vs. Petal Length",
+       x = "Sepal Length (cm)",
+       y = "Petal Length (cm)") +
+  theme_minimal()
+```
+
+# Summary Statistics Table
+
+`r margin_note("Tables provide precise numerical summaries to complement visualizations.")`
+
+Finally, let's include a summary statistics table^[Tables should complement, not replace, visualizations.]:
+
+```{r summary-table}
+# Calculate summary statistics
+iris_summary <- iris %>%
+  group_by(Species) %>%
+  summarise(
+    across(where(is.numeric), 
+           list(mean = ~round(mean(.), 2),
+                sd = ~round(sd(.), 2)),
+           .names = "{.col}_{.fn}")
+  )
+
+knitr::kable(iris_summary, 
+             caption = "Summary statistics for iris measurements by species")
+```
+
+# Conclusion
+
+`r newthought('This document')` has demonstrated numerous approaches to visualizing multivariate data in R. Key takeaways:
+
+- **Scatter plot matrices** provide comprehensive pairwise comparisons
+- **Heatmaps and correlation plots** reveal patterns in large datasets
+- **Parallel coordinates** work well for high-dimensional data
+- **PCA and dimensionality reduction** help visualize complex relationships
+- **Interactive plots** enable dynamic exploration of data
+
+The choice of visualization technique depends on:
+
+1. The number of variables
+2. The data types (continuous, categorical, or mixed)
+3. The relationships you want to explore
+4. The audience and presentation context
+
+`r margin_note("Always consider your audience and the story you want to tell with your data.")`
+
+# References
+
+All datasets used in this document are available in base R or through standard packages:
+
+- `iris`: Fisher's iris dataset
+- `mtcars`: Motor Trend car road tests
+- `economics`: US economic time series data
+
+For more information on visualization principles, see Edward Tufte's works and the R graphics cookbook.
