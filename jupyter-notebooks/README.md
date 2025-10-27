@@ -6,6 +6,8 @@ You need a config.json file in the root of the repository. Credentials provided 
 1. `python3.12 -m venv pyenv`  # Do this in the jupyter-notebooks directory
 2. `source pyenv/bin/activate`
 3. `pip install -r requirements.txt`
+4. `jupyter lab clean`
+5. `jupyter lab build`
 
 ## Running
 
