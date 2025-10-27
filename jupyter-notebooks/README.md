@@ -2,13 +2,25 @@
 
 You need a config.json file in the root of the repository. Credentials provided as needed. 
 
-Structure is like this: 
+## Setup
+1. `python3.12 -m venv pyenv`  # Do this in the jupyter-notebooks directory
+2. `source pyenv/bin/activate`
+3. `pip install -r requirements.txt`
 
+## Running
 
+Make sure the virtual environment you created above is activated
 
+From the `jupyter-notebooks` directory: 
+
+```bash
+juypter lab
 ```
 
-## Default Database Connection Package
+## Notes on new notebooks
+### Default Database Connection Package
+```
+
 This code will find your database configuration file, `config.json`, wherever it is.
 ```python
 paths = ["../../comm_cage.json", "comm_cage.json", "../../config.json", "../config.json", "config.json","../../../config.json"]
@@ -29,7 +41,7 @@ engine = salc.create_engine(
 )
 ```
 
-## Cleaning up old workspace configs from older versions of Jupyter
+### Cleaning up old workspace configs from older versions of Jupyter
 If any of the notebooks freeze, run this after configuring your virtual environment and installing the contents of the requirements.tx file. 
 ```bash
 # where Jupyter stores workspaces depends on platform; show paths first
